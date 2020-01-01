@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- import D3-->
+   <script type="text/javascript" src="https://d3js.org/d3.v3.min.js"></script>
+    <!--import leaflet-->
+
+    <!-- this is leaflet's css. the madlad messes with our css. because we are using mapbox css for the same object.-->
+
+   <!-- <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css" 
+   integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
+   crossorigin=""/> -->
+
+   <!-- Make sure you put this AFTER Leaflet's CSS -->
+    <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"
+    integrity="sha512-gZwIG9x3wUXg2hdXF6+rVkLF/0Vi9U8D2Ntg4Ga5I5BZpVkVxlJWbSQtXPSiUTtC0TjtGOmxa1AJPuV0CPthew=="
+    crossorigin=""></script>
+  
+
+    <!--MAPBOX STUFF-->
+    <script src='https://api.mapbox.com/mapbox.js/v3.2.1/mapbox.js'></script>
+    <link href='https://api.mapbox.com/mapbox.js/v3.2.1/mapbox.css' rel='stylesheet' />      <!--THIS CSS SCRIPT IS VERY TROUBLESOME AND I DONT KNOW WHY????? messes w the bindpoopup and the search bar-->
+
+    <!--ROUTING STUFF-->
+    <link rel="stylesheet" href="leaflet-routing-machine.css" />
+    <script src="leaflet-routing-machine.js"></script>
+    <link rel="stylesheet" href="Control.Geocoder.css" />
+    <script src="Control.Geocoder.js"></script>
+
+
+    <style>
+    #mapid {
+    style:"position":absolute;
+    right:-2.5%;
+    top:10px;
+    height:90vh;
+    width: 95%;
+    }
+
+    #title{
+        text-align: center;
+        font-family: sans-serif;
+    }
+    
+    body{
+        background-color:rgb(228, 206, 167);
+    }
+
+    #crimefilter{
+        position: relative;
+        width: 100px;
+        top:-550px;
+        left:1030px;
+
+        
+    }
+    </style>
+</head>
+
+<body>
+    
+    <!--LEAFLET DRAW SCRIPTS-->
+        <link href='https://api.mapbox.com/mapbox.js/plugins/leaflet-draw/v0.4.10/leaflet.draw.css' rel='stylesheet' />
+        <script src='https://api.mapbox.com/mapbox.js/plugins/leaflet-draw/v0.4.10/leaflet.draw.js'></script>
+        <script src='https://api.mapbox.com/mapbox.js/plugins/leaflet-geodesy/v0.1.0/leaflet-geodesy.js'></script>
+
+    <!--LEAFLET FULL SCREEN SCRIPTS-->
+    <script src='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js'></script>
+    <link href='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css' rel='stylesheet' />
+
+    <!--HEAT MAP SCRIPT-->
+    <script src='https://api.mapbox.com/mapbox.js/plugins/leaflet-heat/v0.1.3/leaflet-heat.js'></script>
+
+    <header id = "title"><b>Austin Texas Crimes Data Visualization</b> <br> Tyler Wilson</header>
+    <div id = "mapid">
+
+        <script>
+            //TODO
+            // add css surrouning map
+
+
+            //crimes data
+            d3.csv("Annual_Crime_Dataset_2015withLongLad.csv", function(data){
+
+                //city grid data
+                d3.json("grid_data.json", function(error,griddata){
+
+                    var griddata = griddata.blocks_xy
+                    var feature_list = []
+                    for (i = 0; i < griddata.length;i++){
+                        feature_list.push({"type":"Feature", "id": "0" + String(i),"geometry":{
+                            "type":"MultiPolygon",
+                            "coordinates":[[griddata[i]["nodes"]]]},
+                        })
+                    }
+
+
+                    var geodata = {
+                        "type":"FeatureCollection",
+                        "features":feature_list
+                    }
+                
+                //Initialize map
+                L.mapbox.accessToken = 'pk.eyJ1IjoidHlsZXJ3aWxzb242NjYiLCJhIjoiY2szcXFkcDViMDRlZDNubnVrY3dmNnZybyJ9.8e9tQNZi6IOxWOONKv3dWg';
+                var mymap = L.mapbox.map('mapid', null, {
+                maxZoom: 18,
+                minZoom:11
+                })
+                .setView([30.267153,-97.7430608], 12);
+
+                //change background color on map layer switch
+
+                var mode = 0
+                mymap.on('baselayerchange',function(){
+                    if (mode==0) {
+                        document.body.style.background = '#4a5768';   
+                    }
+                    else{
+                        document.body.style.background = 'rgb(228,206,167)'
+                    }
+                    if (mode == 0){
+                        mode ++
+                    }
+                    else{
+                        mode = 0
+                    }
+                })
+
+                //ADD FULLSCREEN OPTION
+                L.control.fullscreen().addTo(mymap);
+
+               
+                
+
+                //add search bar
+                var geocoder = L.mapbox.geocoderControl('mapbox.places',{
+                    autocomplete: true,
+                    endpoint: "Austin",
+                    limit:5,
+                    proximity: [30.267153,-97.7430608]
+                    })
+                mymap.addControl(geocoder);
+
+
+                //add marker on the map for when they search a place
+                geocoder.on('select', function(object){
+                    var coord = object.feature.geometry.coordinates;
+                    var searched = object.feature.place_name
+                    if (typeof marker != 'undefined'){
+                        mymap.removeLayer(marker)
+                    }
+                    marker = new L.marker([coord[1],coord[0]]).bindPopup(searched.trim())
+                    marker.addTo(mymap)
+
+                });
+
+                //create layers for different maps
+                var layers = {
+                    street: L.mapbox.styleLayer('mapbox://styles/tylerwilson666/ck3vkasi60pp81cmp404vkh74'),
+                    nightmode: L.mapbox.styleLayer("mapbox://styles/tylerwilson666/ck3wf8gds605n1co31e29lphl")
+                };
+
+                //set street as default
+                layers.street.addTo(mymap);
+                
+                //add layers to map
+                var basemaps = {
+                    "nightmode":layers.nightmode,
+                    "street":layers.street
+                }
+
+                // DRAW FEATURE
+
+                //create a featuregroup to add layer to
+                var featureGroup = L.featureGroup().addTo(mymap);
+                var drawControl = new L.Control.Draw({
+                    edit: {
+                        featureGroup: featureGroup
+                    },
+                    draw: {
+                        polygon: true,
+                        polyline: false,
+                        rectangle: false,
+                        circle: false,
+                        marker: false
+                    }
+                    }).addTo(mymap);
+                
+                    //call these when action happens
+                    mymap.on('draw:created', showPolygonArea);
+                    mymap.on('draw:edited', showPolygonAreaEdited);
+
+
+                    //add funcitnality for when the polygon is edited
+                    function showPolygonAreaEdited(e) {
+                        e.layers.eachLayer(function(layer) {
+                            showPolygonArea({ layer: layer });
+                        });
+                    }
+
+                    //display polygon and display crime data within
+                    function showPolygonArea(e) {
+                        featureGroup.clearLayers();
+                        featureGroup.addLayer(e.layer);
+                        e.layer.bindPopup((LGeo.area(e.layer) / 1000000).toFixed(2) + ' km<sup>2</sup>');
+                        e.layer.openPopup();
+                        //extracting polgon coords
+                        var polygon_coords = e.layer.toGeoJSON()["geometry"]["coordinates"][0]
+                        //to get crime data inside shape
+                        var crime_total = 0
+                        var crime_track = {}
+
+                        //check if in polygon
+                        function inside(point, vs) {
+                            var x = point[0], y = point[1];
+                            var inside = false;
+                            for (var i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+                                var xi = vs[i][0], yi = vs[i][1];
+                                var xj = vs[j][0], yj = vs[j][1];
+                                var intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                                if (intersect) inside = !inside;
+                            }
+                            return inside;
+                        };
+
+                        //execute if point is in polygon drawn
+                        for (i = 0; i < data.length;i++){
+                            if (isNaN(parseFloat(data[i]["Longitude"])) == false){
+                                var in_polygon = inside([parseFloat(data[i]["Longitude"]),parseFloat(data[i]["Latitude"])],polygon_coords)
+                            }
+                            if (in_polygon == true) {
+                                crime_total ++
+                                if (data[i]["Highest NIBRS/UCR Offense Description"].trim() in crime_track){
+                                    crime_track[data[i]["Highest NIBRS/UCR Offense Description"].trim()] ++
+                                }
+                                else {
+                                    crime_track[data[i]["Highest NIBRS/UCR Offense Description"].trim()] = 1
+                                }
+                            }
+                        }
+
+                        //get most frequent crimes
+                        mf_crimes = ['',0]
+                        for (i in crime_track){
+                            if (crime_track[i] > mf_crimes[1]){
+                                mf_crimes = [i, crime_track[i]]
+                            }
+                        }
+
+                        //get string version of crime_track hashtable
+                        var crime_stats = ''
+                        for (i in crime_track){
+                            crime_stats = crime_stats + "<b>" + i + "</b>" + ": " + crime_track[i] + "<br>"
+                        }
+                        e.layer.bindPopup('<b>' + crime_total + "</b>" + ' crimes in 2015.' + '<br>' + crime_stats)
+                    }
+
+
+                //grid data given. never used it
+                //L.geoJson(geodata).addTo(mymap);
+                //console.log(geodata)
+
+                var colors = {
+                    "Robbery":'#ba55d3',
+                    "Burglary":'#8B4513',
+                    "Auto Theft":'#ff4500',
+                    "Agg Assault":'#ffa500',
+                    "Theft":'#778899',
+                    "Murder":'black'
+                }
+
+                //make logo for youtube points
+                var youtube_icon = L.icon({
+                    iconUrl:'youtube_logo.png',
+                    iconSize: [70, 55],
+                    });
+
+                //create crime and color objects
+                var crimes = {
+                    "Robbery":[],
+                    "Burglary":[],
+                    "Auto Theft":[],
+                    "Agg Assault":[],
+                    "Theft":[],
+                    "Murder":[],
+                    "Internet Idiots":[L.marker([30.267065, -97.739423],{
+                        icon: youtube_icon
+                    }).bindPopup("<a href=https://www.youtube.com/watch?v=JwbSxbEhlIE target= _blank>Wig Snatched!</a>"),
+                    L.marker([30.2727138, -97.7570674], {
+                        icon: youtube_icon
+                    }).bindPopup('<a href=https://www.youtube.com/watch?v=SegDkryVHB8 target = _blank> "WASSUP B**CH" </a>'),
+                    L.marker([30.260928, -97.737440], {
+                        icon: youtube_icon
+                    }).bindPopup(" <a href=https://www.youtube.com/watch?v=Sxuy9nLiMhw target = _blank> IHOP SHOWDOWN! </a>"),
+                    L.marker([30.268645, -97.741139], {
+                        icon: youtube_icon
+                    }).bindPopup(" <a href=https://www.youtube.com/watch?v=kv--7YKoV-s target = _blank> SCOOTER THRU THE WINDOW! </a>")]
+                 
+                    }
+
+                //create crime data points
+                for (var i = 0; i < data.length; i++){
+
+                    // check if coords exist
+                    if (isNaN(parseFloat(data[i]["Longitude"])) == false){
+
+                        //cut down thefts to only include specific descriptions (too much data)
+                        if (data[i]["Highest NIBRS/UCR Offense Description"] == "Theft"){
+                            if (data[i]["GO Highest Offense Desc"].trim() != "THEFT"){
+                                crimes[data[i]["Highest NIBRS/UCR Offense Description"]].push(L.circle([parseFloat(data[i]["Latitude"]),parseFloat(data[i]["Longitude"])], {
+                                color: colors["Theft"],
+                                fillColor:colors["Theft"],
+                                radius:.3})
+                                .bindPopup(data[i]["GO Highest Offense Desc"].trim()))
+    
+                            }
+                        }
+
+                        //only include residential burglaries. (makes comparisoin eaiser for potential home buyers)
+                        else if (data[i]["Highest NIBRS/UCR Offense Description"] == "Burglary"){
+                            if (data[i]["GO Highest Offense Desc"].trim() == "BURGLARY OF RESIDENCE"){
+                                crimes[data[i]["Highest NIBRS/UCR Offense Description"]].push(L.circle([parseFloat(data[i]["Latitude"]),parseFloat(data[i]["Longitude"])], {
+                                //icon:crimeicons[data[i]["Highest NIBRS/UCR Offense Description"]]
+                                color: colors[data[i]["Highest NIBRS/UCR Offense Description"]],
+                                fillColor:colors[data[i]["Highest NIBRS/UCR Offense Description"]],
+                                radius:.3
+                                })
+                                .bindPopup(data[i]["GO Highest Offense Desc"].trim()))
+
+                               
+                            }
+                        }
+
+                        //else add coords
+                        else{
+                            crimes[data[i]["Highest NIBRS/UCR Offense Description"]].push(L.circle([parseFloat(data[i]["Latitude"]),parseFloat(data[i]["Longitude"])], {
+                            color: colors[data[i]["Highest NIBRS/UCR Offense Description"]],
+                            fillColor:colors[data[i]["Highest NIBRS/UCR Offense Description"]],
+                            radius:.3})
+                            .bindPopup(data[i]["GO Highest Offense Desc"].trim()))
+                        }
+                    };
+                }
+
+                 // HEAT MAP
+                
+                //create danger index
+                var danger_index = {
+                    "Robbery":0.75,
+                    "Burglary":0.75,
+                    "Auto Theft":0.6,
+                    "Agg Assault":1.0,
+                    "Theft":0.5,
+                    "Murder":1.0
+
+                }
+
+                var heat = L.heatLayer([], {
+                    radius:13,
+                    gradient: {
+                    0.5: '#4169E1',//blue
+                    0.6:'#7CFC00', //green
+                    0.75: '#FFFF00',//red
+                    1.0: '#8B0000'} //red
+                    })
+
+
+                //add our data points in. heat map is based on frequency of crime and how violent it is
+                for (i = 0; i < data.length; i++){
+                    if (isNaN(parseFloat(data[i]["Longitude"])) == false){
+                        var point = [parseFloat(data[i]["Latitude"]),parseFloat(data[i]["Longitude"])]
+                        point.push(danger_index[data[i]["Highest NIBRS/UCR Offense Description"]])
+                        heat.addLatLng(point)
+                    }
+                    
+                }
+
+                //create group layer
+                var display_crimes = {
+                    "Robbery":L.layerGroup(crimes["Robbery"]),
+                    "Residential Burglary":L.layerGroup(crimes["Burglary"]),
+                    "Auto Theft":L.layerGroup(crimes["Auto Theft"]),
+                    "Agg Assault":L.layerGroup(crimes["Agg Assault"]),
+                    "Theft":L.layerGroup(crimes["Theft"]),
+                    "Murder":L.layerGroup(crimes["Murder"]),
+                    "Heat Map":heat,
+                    "Internet Idiots":L.layerGroup(crimes["Internet Idiots"])
+                    
+                }
+
+                //add group layer to map
+               L.control.layers(basemaps,display_crimes).addTo(mymap);
+
+
+                //Disable double click zoom
+                mymap.doubleClickZoom.disable();
+
+                //add routing control
+                var control = L.Routing.control({
+                    waypoints: [],
+                    routeWhileDragging: true,
+                    showAlternatives: true,
+                    geocoder: L.Control.Geocoder.nominatim()
+                })
+                .addTo(mymap);
+                control.hide();
+
+                function createButton(label, container) {
+                var btn = L.DomUtil.create('button', '', container);
+                btn.setAttribute('type', 'button');
+                btn.innerHTML = label;
+                return btn;
+                }
+
+                mymap.on('dblclick', function(e) {
+                    var container = L.DomUtil.create('div'),
+                        startBtn = createButton('Start from this location', container),
+                        destBtn = createButton('Go to this location', container);
+
+                    L.popup()
+                        .setContent(container)
+                        .setLatLng(e.latlng)
+                        .openOn(mymap);
+
+                    L.DomEvent.on(startBtn, 'click', function() {
+                        control.spliceWaypoints(0, 1, e.latlng);
+                        mymap.closePopup();
+                    });
+
+                    L.DomEvent.on(destBtn, 'click', function() {
+                        control.spliceWaypoints(control.getWaypoints().length - 1, 1, e.latlng);
+                        mymap.closePopup();
+                    });
+                    control.hide();
+                });
+
+                control._container.style.display = "None";
+
+
+                ////////
+
+
+
+
+
+            })
+            });
+
+
+        </script>
+    </div>
+
+</body>
+</html>

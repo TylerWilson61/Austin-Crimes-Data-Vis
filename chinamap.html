@@ -1,0 +1,105 @@
+<html>
+
+<head>
+	<meta charset="utf-8">
+	<title>Centering elements with CSS</title>
+	<script src="http://d3js.org/d3.v3.min.js"></script>
+	<style>
+		.chinamap{
+			/*line-height: 200px;*/
+            text-align: center;
+            border: 5px solid green; 
+            position: relative;
+			padding: 0px 0px 0px 0px;
+		}
+		#map{
+			border: 3px solid rgb(13, 0, 128);
+			margin: 10px;
+            /*width: 50%;*/
+            /*float: right;*/
+            /*padding: 100px 100px 100px 100px;*/
+            position: relative;
+		}
+		.notes{
+			font-family: "Times New Roman", Times, serif;
+			font-size: 30px;
+		}
+		h1{
+			font-family: "Times New Roman", Times, serif;
+			font-size: 40px;
+		}
+	</style>
+</head>
+
+<body>
+	<div class="chinamap" id="view1">
+		<h1>View 1</h1>
+		
+		<div id="map">
+				<svg id="svg_canvas"></svg>
+		</div>
+		
+	</div>
+	<div class="notes">
+			<h1>Here are some tips you may refer in the final project</h1>
+			<ul>
+				<li>To centering the drawing, you can use CSS.</li>
+				<li>To link to another view or HTML file, you can add an &lta&gt tag.</li>
+			</ul>
+			<p><a href="#view1">go to view 1</a></p>
+		</div>
+	<script>
+		var width = 1000;
+		var height = 1000;
+		var svg = d3.select("#svg_canvas")
+			.attr("width", width)
+			.attr("height", height)
+			.append("g")
+			.attr("transform", "translate(0,0)");
+		var color = d3.scale.category20();
+
+		d3.json("china.json", function (error, root) {
+			if (error)
+				return console.error(error);			
+			//set the projection and centre the map
+			var projection = d3.geo.mercator()
+				.scale(1)
+				.translate([0, 0]);
+			var path = d3.geo.path()
+				.projection(projection);
+			var b = path.bounds(root),
+				s = .95 / Math.max((b[1][0] - b[0][0]) / width, (b[1][1] - b[0][1]) / height),
+				t = [(width - s * (b[1][0] + b[0][0])) / 2, (height - s * (b[1][1] + b[0][1])) / 2];
+
+			console.log(b)
+			
+			projection.scale(s)
+				.translate(t);
+
+			var path = d3.geo.path()
+				.projection(projection);
+			//draw the map
+			svg.selectAll("path")
+				.data(root.features)
+				.enter()
+				.append("path")
+				.attr("stroke", "#000")
+				.attr("stroke-width", 1)
+				.attr("fill", function (d, i) {
+					return color(i);
+				})
+				.attr("d", path)
+				.on("mouseover", function (d, i) {
+					d3.select(this)
+						.attr("fill", "yellow");
+				})
+				.on("mouseout", function (d, i) {
+					d3.select(this)
+						.attr("fill", color(i));
+				});
+
+		});
+	</script>
+</body>
+
+</html>

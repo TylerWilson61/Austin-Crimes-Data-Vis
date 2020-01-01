@@ -1,0 +1,181 @@
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Fading</title>
+</head>
+<style>
+    .province {
+        stroke: black;
+        stroke-width: 1px;
+    }
+
+    .southsea {
+        stroke: black;
+        stroke-width: 1px;
+        fill: #ccc;
+    }
+
+    .valueText {
+        font-family: arial;
+        font-size: 12px;
+        text-anchor: middle;
+    }
+</style>
+
+<body>
+    <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+    
+    <script>
+
+        var width = 700,
+            height = 700;
+
+        var svg = d3.select("body").append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+
+        var projection = d3.geo.mercator()
+            .center([107, 31])
+            .scale(600)
+            .translate([width / 2, height / 2]);
+
+        var path = d3.geo.path()
+            .projection(projection);
+
+
+        d3.json("china.json", function (error, root) {
+            if (error)
+                return console.error(error);
+
+            //check the loaded data
+            console.log(root);
+
+            // Create a unit projection.
+            var projection = d3.geo.mercator()
+                .scale(1)
+                .translate([0, 0]);
+            // Create a path generator.
+            var path = d3.geo.path()
+                .projection(projection);
+            // Compute the bounds of a feature of interest, then derive scale & translate.
+            var b = path.bounds(root),
+                s = .95 / Math.max((b[1][0] - b[0][0]) / width, (b[1][1] - b[0][1]) / height),
+                t = [(width - s * (b[1][0] + b[0][0])) / 2, (height - s * (b[1][1] + b[0][1])) / 2];
+            console.log(b, s, t); //You can refer the values if you plan to set them manually.
+            // Update the projection to use computed scale & translate.
+            projection.scale(s)
+                .translate(t);
+
+            var china = svg.append("g");
+            var provinces = china.selectAll("path")
+                .data(root.features)
+                .enter()
+                .append("path")
+                .attr("class", "province")
+                .style("fill", "#ccc")
+                .attr("d", path);
+
+
+            d3.json("tourism.json", function (error, valuedata) {
+
+                //create an array whose indices are the names of proviences
+                var values = [];
+                for (var i = 0; i < valuedata.provinces.length; i++) {
+                    var name = valuedata.provinces[i].name;
+                    var value = valuedata.provinces[i].value;
+                    values[name] = value;
+                }
+                 console.log(values);
+
+                //find the maximum and minimum
+                var maxvalue = d3.max(valuedata.provinces, function (d) { return d.value; });
+                var minvalue = 0;
+
+                //define a scale, map the max and min into [0, 1]
+                var linear = d3.scale.linear()
+                    .domain([minvalue, maxvalue])
+                    .range([0, 1]);
+
+                //set the max and min color 
+                var a = d3.rgb(255, 255, 0); //light red
+                var b = d3.rgb(255, 0, 0);	//red
+
+                //interpolation for color
+                var computeColor = d3.interpolate(a, b);
+
+                //set the color for each province
+                provinces.style("fill", function (d, i){
+                    var t = linear(values[d.properties.name]);
+                    var color = computeColor(t);
+                    return color.toString(); // transform to string
+                });
+
+                //create a defs
+                var defs = svg.append("defs");
+
+                var linearGradient = defs.append("linearGradient")
+                    .attr("id", "linearColor")
+                    .attr("x1", "0%")
+                    .attr("y1", "0%")
+                    .attr("x2", "100%")
+                    .attr("y2", "0%");
+
+                ////the <stop> defines the ramp of colors to use on a gradient
+                var stop1 = linearGradient.append("stop")  
+                    .attr("offset", "0%")
+                    .style("stop-color", a.toString());
+
+                var stop2 = linearGradient.append("stop")
+                    .attr("offset", "100%")
+                    .style("stop-color", b.toString());
+
+                ////draw the bar of color scale
+                var colorRect = svg.append("rect")
+                			.attr("x", 20)  // values is set manually
+                			.attr("y", 0.85*height)
+                			.attr("width", 140)
+                			.attr("height", 30)
+                			.style("fill","url(#" + linearGradient.attr("id") + ")");
+
+                //add text
+                var minValueText = svg.append("text")
+                			.attr("class","valueText")
+                			.attr("x", 20)
+                			.attr("y", 0.85*height)
+                			.attr("dy", "-0.3em")
+                			.text(function(){
+                				return minvalue;
+                			});
+
+                var maxValueText = svg.append("text")
+                			.attr("class","valueText")
+                			.attr("x", 160)
+                			.attr("y", 0.85*height)
+                			.attr("dy", "-0.3em")
+                			.text(function(){
+                				return maxvalue;
+                			});
+            })
+        });
+
+
+        d3.xml("southchinasea.svg", function (error, xmlDocument) {
+            svg.html(function (d) {
+                return d3.select(this).html() + xmlDocument.getElementsByTagName("g")[0].outerHTML;
+            });
+
+            var gSouthSea = d3.select("#southsea");
+
+            gSouthSea.attr("transform", "translate("+0.8*width+","+0.75*height+")scale(0.5)")
+                .attr("class", "southsea");
+
+        });
+
+
+    </script>
+
+</body>
+
+</html>

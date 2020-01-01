@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+    <head>
+    <script type="text/javascript" src="https://d3js.org/d3.v3.min.js"></script>
+    </head>
+    <body>
+        <script>
+        d3.csv("Annual_Crime_Dataset_2015withLongLad.csv", function(data){
+            var crimes = []
+            for (var i = 0; i < data.length; i++){
+                var crime = data[i]["Highest NIBRS/UCR Offense Description"]
+
+                if (crimes.indexOf(crime) == -1){
+                    crimes.push(data[i]["Highest NIBRS/UCR Offense Description"]);
+                }
+               
+            }
+
+
+
+
+            console.log(data)
+            console.log(crimes);
+        })
+
+
+
+
+
+
+        
+        
+        
+        </script>
+    </body>
+</html>
