@@ -1,5 +1,10 @@
 # Austin-Crimes-Data-Vis
 An interative visualization to view potential neighbohoods in Austin,Texas
 
-You are going to want to fork the repository and then run it on a live server (ex. live server extenstion on Visual Studio Code)
-Data needs to be loaded in from local source.
+
+# To Download repository
+git clone <repository link>
+  
+# To run program
+I use the live server extension on vscode and then run the city_map.html file. You may choose to use a different method if you'd like to load the webpage locally on your preferred web browser.
+
